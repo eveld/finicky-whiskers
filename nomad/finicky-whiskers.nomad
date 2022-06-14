@@ -3,8 +3,6 @@ job "finicky-whiskers" {
   type        = "service"
 
   group "finicky-whiskers-frontend" {
-    count = 1
-
     network {
       mode = "bridge"
       port "http" {
@@ -33,7 +31,7 @@ job "finicky-whiskers" {
 
       artifact {
         source      = "https://github.com/fermyon/spin/releases/download/v0.2.0/spin-v0.2.0-linux-amd64.tar.gz"
-        destination = "local/"
+        destination = "local/bin"
       }
 
       artifact {
@@ -49,7 +47,7 @@ job "finicky-whiskers" {
         command = "bash"
         args = [
           "-c",
-          "local/spin up --log-dir ${NOMAD_ALLOC_DIR}/logs --file local/repo/spin.toml --listen 0.0.0.0:8080 --env REDIS_ADDRESS=redis://localhost:6379"
+          "local/bin/spin up --log-dir ${NOMAD_ALLOC_DIR}/logs --file local/repo/spin.toml --listen 0.0.0.0:8080 --env REDIS_ADDRESS=redis://localhost:6379"
         ]
       }
     }
@@ -88,7 +86,7 @@ job "finicky-whiskers" {
 
       artifact {
         source      = "https://github.com/fermyon/spin/releases/download/v0.2.0/spin-v0.2.0-linux-amd64.tar.gz"
-        destination = "local/"
+        destination = "local/bin"
       }
 
       artifact {
@@ -104,7 +102,7 @@ job "finicky-whiskers" {
         command = "bash"
         args = [
           "-c",
-          "local/spin up --log-dir ${NOMAD_ALLOC_DIR}/logs --file local/repo/spin-morsel.toml --env REDIS_ADDRESS=redis://localhost:6379"
+          "local/bin/spin up --log-dir ${NOMAD_ALLOC_DIR}/logs --file local/repo/spin-morsel.toml --env REDIS_ADDRESS=redis://localhost:6379"
         ]
       }
     }

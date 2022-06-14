@@ -1,90 +1,40 @@
-variable "domain" {
-  type        = string
-  default     = "finicky-whiskers.local.fermyon.link"
-  description = "hostname"
-}
-
 job "finicky-whiskers" {
   datacenters = ["dc1"]
   type        = "service"
 
   group "finicky-whiskers-frontend" {
-    count = 2
+    count = 1
 
     network {
-      port "http" {}
+      mode = "bridge"
+      port "http" {
+        to = 8080
+      }
     }
 
     service {
       name = "finicky-whiskers"
       port = "http"
 
-      tags = [
-        "traefik.enable=true",
-        "traefik.http.routers.finicky-whiskers.rule=Host(`${var.domain}`)",
-      ]
-
-      check {
-        port     = "http"
-        name     = "alive"
-        type     = "tcp"
-        interval = "10s"
-        timeout  = "2s"
+      connect {
+        sidecar_service {
+          proxy {
+            upstreams {
+              destination_name = "redis"
+              local_bind_port  = 6379
+            }
+          }
+        }
       }
     }
 
     task "server" {
-      driver = "raw_exec"
+      driver = "exec"
 
       artifact {
-        source = "git::https://github.com/fermyon/finicky-whiskers"
-        destination = "local/repo"
+        source      = "https://github.com/fermyon/spin/releases/download/v0.2.0/spin-v0.2.0-linux-amd64.tar.gz"
+        destination = "local/"
       }
-
-      env {
-        RUST_LOG = "spin=debug"
-      }
-
-      config {
-        command = "bash"
-        args = [
-          "-c",
-          "cd local/repo/session && make && cd .. && spin up --log-dir ${NOMAD_ALLOC_DIR}/logs --file spin.toml --listen ${NOMAD_ADDR_http} --env REDIS_ADDRESS=redis://${NOMAD_IP_http}:6379"
-        ]
-      }
-    }
-
-  }
-
-  group "finicky-whiskers-backend" {
-    network {
-      port "db" {
-        static = 6379
-      }
-    }
-
-    task "redis" {
-      driver = "docker"
-
-      service {
-        name = "finicky-whiskers-redis"
-        port = "db"
-
-        check {
-          name     = "alive"
-          type     = "tcp"
-          interval = "10s"
-          timeout  = "2s"
-        }
-      }
-      config {
-        image = "redis:7"
-        ports = ["db"]
-      }
-    }
-
-    task "morsel" {
-      driver = "raw_exec"
 
       artifact {
         source      = "git::https://github.com/fermyon/finicky-whiskers"
@@ -99,10 +49,64 @@ job "finicky-whiskers" {
         command = "bash"
         args = [
           "-c",
-          "cd local/repo && perl -i -pe 's/localhost:6379/${NOMAD_ADDR_db}/' spin-morsel.toml && spin up --log-dir ${NOMAD_ALLOC_DIR}/logs --file spin-morsel.toml --env REDIS_ADDRESS=redis://${NOMAD_ADDR_db}"
+          "local/spin up --log-dir ${NOMAD_ALLOC_DIR}/logs --file local/repo/spin.toml --listen 0.0.0.0:8080 --env REDIS_ADDRESS=redis://localhost:6379"
         ]
       }
     }
+  }
 
+  group "finicky-whiskers-backend" {
+    network {
+      mode = "bridge"
+      port "db" {
+        to = 6379
+      }
+    }
+
+    service {
+      name = "finicky-whiskers-redis"
+      port = "db"
+
+      connect {
+        sidecar_service {
+          proxy {
+          }
+        }
+      }
+    }
+
+    task "redis" {
+      driver = "docker"
+
+      config {
+        image = "redis:7"
+      }
+    }
+
+    task "morsel" {
+      driver = "exec"
+
+      artifact {
+        source      = "https://github.com/fermyon/spin/releases/download/v0.2.0/spin-v0.2.0-linux-amd64.tar.gz"
+        destination = "local/"
+      }
+
+      artifact {
+        source      = "git::https://github.com/fermyon/finicky-whiskers"
+        destination = "local/repo"
+      }
+
+      env {
+        RUST_LOG = "spin=debug"
+      }
+
+      config {
+        command = "bash"
+        args = [
+          "-c",
+          "local/spin up --log-dir ${NOMAD_ALLOC_DIR}/logs --file local/repo/spin-morsel.toml --env REDIS_ADDRESS=redis://localhost:6379"
+        ]
+      }
+    }
   }
 }

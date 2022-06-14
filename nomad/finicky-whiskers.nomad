@@ -2,7 +2,7 @@ job "finicky-whiskers" {
   datacenters = ["dc1"]
   type        = "service"
 
-  group "finicky-whiskers-frontend" {
+  group "finicky-whiskers-frontends" {
     network {
       mode = "bridge"
       port "http" {
@@ -35,7 +35,7 @@ job "finicky-whiskers" {
       }
 
       artifact {
-        source      = "git::https://github.com/fermyon/finicky-whiskers"
+        source      = "git::https://github.com/eveld/finicky-whiskers"
         destination = "local/repo"
       }
 
@@ -90,7 +90,7 @@ job "finicky-whiskers" {
       }
 
       artifact {
-        source      = "git::https://github.com/fermyon/finicky-whiskers"
+        source      = "git::https://github.com/eveld/finicky-whiskers"
         destination = "local/repo"
       }
 
